@@ -1,0 +1,302 @@
+---
+title: "HW3"
+author: "B08303010 Manlin Chen"
+date: "1/4/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Q1: One Parameter Estimation
+
+### Load Data
+
+```{r}
+# insert the file path
+csv_path <- "C:/Users/CCT/Downloads/20201223_homework3/HW3_data.csv"
+df <- read.csv(csv_path)
+```
+
+### 1. How many random samples do you have?
+
+```{r}
+nrow(df)
+```
+### (Midterm 2 Question 4 Revisit) Let the setup be the same as it was in Midterm 2 Question 4.
+Now observe the first column of `df`, which is labeled by column name `Q1`.
+
+$1$ represents that the interviewee answered "Yes", and $0$ represents the opposite.
+
+Note that, we've already known that $\{X_i\}_{i=1}^n \stackrel{i.i.d.}{\sim} Bernoulli(\pi p+(1-\pi)(1-p))$ where $\pi$ represents the unknown ratio of people in America who are the supporters of Trump. In order to make the interviewee reveal their true preference, the interviewer will ask the interviewee to toss a coin labeling $T$ and $B$ with probability $p$ and $1-p$ respectively ($p \neq \frac{1}{2}$). The interviewee will say "Yes" if and only if the outcome of the toss corresponds to his/her favor presidential candidate.
+
+
+### 2. Given $p=0.25$ Write down the log-likelihood function in R with respect to $\pi$.
+
+```{r}
+mll <- function(PI){
+  logLikelihood <-0
+  mu=0.25*PI+0.75*(1-PI)
+  logLikelihood <- sum(X)*log(mu)+(length(X)-sum(X))*log(1-mu)
+
+  return(-logLikelihood)
+}
+  
+```
+
+### 3. Use the random samples and the `mle()` function to find the maximum likelihood estimate
+```{r}
+X <- df$Q1
+library(stats4)
+MaxLikeEst = mle(mll, start = list(PI = 0),method = "L-BFGS-B",)
+summary(MaxLikeEst)
+
+
+```
+
+### 4. Given significant level $\alpha = 0.05$, construct the $95\%$ Interval Estimate for $\pi$
+
+Recall that $$\sqrt{n}(\hat{\pi}-\pi) \stackrel{d}{\rightarrow} N(0, \frac{[p\pi+(1-p)(1-\pi))(1-p\pi -(1-p)(1-\pi)]}{[p-(1-p)]^2})$$
+You may use $$\varphi = \frac{\hat{\pi}-\pi}{\sqrt{ \frac{[p\hat{\pi}+(1-p)(1-\hat{\pi}))(1-p\hat{\pi} -(1-p)(1-\hat{\pi})]}{n[p-(1-p)]^2} }}$$ for simplicity. (check textbook p.274 if you don't know where to start from)
+
+
+```{r}
+P <- 0.25
+pi_hat <- 0.566
+i <-(P*pi_hat+(1-P)*(1-pi_hat))*(1-P*pi_hat-(1-P)*(1-pi_hat))/(1000*(2*P-1)*(2*P-1))
+
+L <- pi_hat+qnorm(1-0.05/2)*sqrt(i)
+U <- pi_hat-qnorm(1-0.05/2)*sqrt(i)
+
+print(L); print(U)
+```
+
+### 5. (Conti. from (4.)) Draw the Interval Estimate on the distribution of $\varphi$
+```{r}
+n = 1000
+alpha=0.05
+
+
+grid <- seq(0.4, 0.7, length = 1000)
+plot(grid, dnorm(x = grid, 
+                 mean = pi_hat, 
+                 sd = sqrt(i)),
+     type = "l",
+     xlab = "X",
+     ylab = "")
+abline(v = pi_hat, col = 'royalblue') 
+abline(v = L, col = 'blue')
+abline(v = U, col = 'blue')
+
+```
+
+### 6. Given the same significant level and the following hypothesis:
+
+$$H_0: \pi = 0.5$$
+$$H_A: \pi \neq 0.5$$
+### Conclude your decision depends on the result in (4.) and (5.) That is, will you reject the null hypothesis or not according to the interval estimated?
+
+Because H_0 is not in the interval estimate, reject the null hypothesis
+
+### 7. Now, given the same significance level, and the same hypothesis in (6.), find the test statistics $\varphi_0$
+
+Note that, in order to make the result of hypothesis test consistent with the result of the interval estimate, please provide the $\varphi_0$ according to the $\varphi$ given in (4.)
+
+```{r}
+varphi_0<- (pi_hat-0.5)/sqrt(i)
+print(varphi_0)
+
+```
+
+### 8. Given $\alpha=0.05$, and $z_{\alpha/2}=1.96$ What will you conclude on your decision according to (7.)? That is, will you reject the null hypothesis? Note that this is a two-tail-test.
+
+```{r}
+print(varphi_0)
+print(qnorm(1-0.05/2))
+
+```
+
+Since varphi_0 > 1.96, I'll reject the null hypothese.
+
+### 9. Calculate the p-value
+```{r}
+p<-(1-pnorm(varphi_0))*2
+print(p)
+```
+
+
+### 10. (Conti. from (8.-9.)) Draw the plot for $\varphi_0$. And draw vertical lines representing the area of significance level, and the p-value.
+```{r}
+grid <- seq(-4, 4, length = 1000)
+plot(grid, dnorm(x = grid, 
+                 mean =0, 
+                 sd = 1),
+     type = "l",
+     xlab = "X",
+     ylab = "")
+abline(v = varphi_0, col = 'red') 
+abline(v = 0, col = 'royalblue') 
+abline(v = qnorm(0.975), col = 'blue')
+abline(v = qnorm(0.025), col = 'blue')
+polygon(c(varphi_0,grid[grid>=varphi_0]),
+        c(0, dnorm(grid[grid>=varphi_0], mean=0, sd=1)),
+        col = "royalblue")
+polygon(c(grid[grid<=-varphi_0],-varphi_0),
+        c(dnorm(grid[grid<=-varphi_0], mean=0, sd=1),0),
+        col = "royalblue")
+```
+
+
+# Q2: Two-Parameter Estimation
+
+### Observe the second column in `df`. Given that the random samples $\{Y_i\}_{i=1}^n \stackrel{i.i.d.}{\sim} N(\mu, \sigma^2)$, where $\mu$ and $\sigma^2$ are both unknown.
+
+### 1. Write down the log-likelihood function in R with respect to $\mu$ and $\sigma$.
+
+```{r}
+X <- df$Q2
+mll <- function(mu, sigma){
+  logLikelihood <-0
+  for(x in X){
+    logLikelihood <- logLikelihood + log(dnorm(x, mean = mu, sd = sigma))
+  }
+  return(-logLikelihood)
+}
+```
+
+### 2. Use the random samples and the `mle()` function to find the maximum likelihood estimate for $\mu$ and $\sigma$ respectively by using the starting point $\mu = 6, sigma = 1$
+
+```{r}
+MaxLikeEst = mle(mll, start = list(mu=6, sigma=1),method = "L-BFGS-B",)
+summary(MaxLikeEst)
+
+```
+
+### 3. Write down the log-likelihood function in R with respect to $\mu$ and $\sigma^2$. And repeat the step in (2.), but find the maximum likelihood estimate for $\mu$ and $\sigma^2$ respectively.
+```{r}
+mll <- function(mu, sigma_sq){
+  logLikelihood <-0
+  for(x in X){
+    logLikelihood <- logLikelihood + log(dnorm(x, mean = mu, sd = sqrt(sigma_sq)))
+  }
+  return(-logLikelihood)
+}
+MaxLikeEst = mle(minuslogl=mll, start = list(mu=6, sigma_sq=1),method = "L-BFGS-B",)
+summary(MaxLikeEst)
+
+
+```
+
+### 4. Given significant level $\alpha = 0.05$, construct the $95\%$ Interval Estimate for $\mu$ and $\sigma^2$ respectively.
+```{r}
+n <-1000
+alpha<-0.05
+L <-  mean(X)-qt(1-alpha/2, df=n-1)*sd(X)/sqrt(n)
+U <-  mean(X)+qt(1-alpha/2, df=n-1)*sd(X)/sqrt(n)
+print(L); print(U)
+
+L <-  (n-1)*sd(X)*sd(X)/qchisq(1-alpha/2, df=n-1)
+U <-  (n-1)*sd(X)*sd(X)/qchisq(alpha/2, df=n-1)
+print(L); print(U)
+```
+
+### 5. (Conti. from (4.)) For $\mu$, draw the Interval Estimate on the distribution of $\varphi$.
+```{r}
+X <- df$Q2
+n = 1000
+alpha=0.05
+
+
+grid <- seq(4.5, 5.5, length = 1000)
+
+plot(grid, dnorm(x = grid, 
+                 mean=mean(X), sd=sd(X)/sqrt(length(X))),
+     type = "l",
+     xlab = "X",
+     ylab = "")
+
+abline(v = mean(X), col = 'royalblue')
+abline(v = mean(X)-qt(1-alpha/2, df=n-1)*sd(X)/sqrt(n), col = 'blue')
+abline(v = mean(X)+qt(1-alpha/2, df=n-1)*sd(X)/sqrt(n), col = 'blue')
+```
+
+When degree of freedom equal to 1000-1, the student's distribution converage to normal distribution.
+Using normal distribution in this plot.
+
+
+### 6. Given the same significant level and the following hypothesis:
+
+$$H_0: \mu = 5$$
+$$H_A: \mu \neq 5$$
+### Conclude your decision depends on the result in (4.) and (5.) That is, will you reject the null hypothesis or not according to the interval estimated?
+
+Because H_0 is in the interval estimate, cannot reject the hypothesis
+
+### Repeat the above question for another hypothesis stated below:
+
+$$H_0: \sigma^2 = 4$$
+$$H_A: \sigma^2 \neq 4$$
+
+Because H_0 is in the interval estimate, cannot reject the hypothesis
+
+### 7. Now, given the same significance level, and the same hypothesis in (6.). For $\mu$ and $\sigma^2$, find the test statistics $\varphi_0$ respectively.
+
+```{r}
+varphi_mu <- (mean(X)-5)*sqrt(n)/sqrt(sd(X)*sd(X)*n/(n-1))
+varphi_sigma <- n*sd(X)*sd(X)/4
+```
+
+### 8. Given $\alpha=0.05$, and $z_{\alpha/2}=1.96$ What will you conclude on your decision according to (7.)? That is, will you reject the null hypothesis? Note that this is a two-tail-test.
+
+```{r}
+print(varphi_mu)
+alpha <-0.05
+qt(1-alpha/2, df=n-1)
+```
+
+Because abs(varphi_mu) < qt(1-alpha/2, df=n-1), not in RR
+cannot reject H_0
+
+### 9. Calculate the p-values in the above tests.
+```{r}
+print(pt(varphi_mu, df=n-1)*2)
+```
+
+
+### 10. (Conti. from (8.-9.)) For $\mu$, draw the plot of $\varphi$ under the null-hypothesis. And draw vertical lines representing the area of significance level, and the p-value respectively.
+```{r}
+grid <- seq(-4, 4, length = 1000)
+plot(grid, dt(x = grid, df=n-1), type = "l", xlab = "X", ylab = "")
+abline(v = qt(0.975, df=n-1), col = 'blue')
+abline(v = qt(0.025, df=n-1), col = 'blue')
+abline(v = varphi_mu, col = 'red')
+polygon(c(grid[grid<=varphi_mu], varphi_mu),
+        c(dt(grid[grid<=varphi_mu], df=n-1), 0),
+        col = "orange")
+polygon(c(grid[grid>=-varphi_mu], -varphi_mu),
+        c(dt(grid[grid>=-varphi_mu], df=n-1),0),
+        col = "orange")
+
+```
+
+```
+
+
+# 畫圖示範
+
+```{r}
+n = 100
+mu = 0.87
+grid <- seq(0.6, 1, length = 1000)
+
+X <- rbinom(n, size = 1, prob = mu)
+plot(grid, dnorm(x = grid, 
+                 mean = mean(X), 
+                 sd = sd(X)/sqrt(length(X))),
+     type = "l",
+     xlab = "X",
+     ylab = "")
+abline(v = 0.87, col = 'red') #the true parameter
+abline(v = mean(X), col = 'royalblue') #the true parameter
+abline(v = mean(X)-qnorm(0.975)*sd(X)/sqrt(n), col = 'blue')
+abline(v = mean(X)+qnorm(0.975)*sd(X)/sqrt(n), col = 'blue')
+```
